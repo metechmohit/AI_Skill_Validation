@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Upload Resume{% endblock %}
+{% block content %}
+    <h2>Applicant Portal</h2>
+    <p>Welcome! Please provide your details and upload your resume to begin the automated skill assessment process.</p>
+    <form method="post" enctype="multipart/form-data" action="{{ url_for('applicant_upload') }}">
+        <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" name="name" required placeholder="e.g., Jane Doe">
+        </div>
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required placeholder="e.g., jane.doe@example.com">
+        </div>
+        <div class="form-group">
+            <label for="resume">Resume (PDF or DOCX format only)</label>
+            <input type="file" id="resume" name="resume" accept=".pdf,.docx" required>
+        </div>
+        <button type="submit" class="btn">Upload and Start Assessment</button>
+    </form>
+{% endblock %}

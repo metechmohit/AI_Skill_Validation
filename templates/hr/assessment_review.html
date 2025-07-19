@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Review Assessment{% endblock %}
+{% block content %}
+    <h2>Review Assessment for {{ candidate.name }}</h2>
+    <div class="assessment-question">
+        <h3>Skill: {{ assessment.skill }}</h3>
+        <p><strong>Question:</strong></p>
+        <p>{{ assessment.question }}</p>
+        
+        <hr>
+
+        <p><strong>Model Answer (For Reference):</strong></p>
+        <pre>{{ assessment.model_answer }}</pre>
+
+        <hr>
+
+        <p><strong>Candidate's Answer:</strong></p>
+        <pre>{{ response.answer }}</pre>
+    </div>
+
+    <p><strong>Current Score:</strong> {{ "%.2f"|format(response.score) }}%</p>
+
+    <form method="post">
+        <div class="form-group">
+            <input type="checkbox" id="flagged" name="flagged" {% if response.flagged %}checked{% endif %}>
+            <label for="flagged">Flag this response for further review</label>
+        </div>
+        {# Future functionality could be added here, like a score override field or comments #}
+        <button type="submit" class="btn">Update Status</button>
+    </form>
+    <br>
+    <a href="{{ url_for('hr_applicant_detail', candidate_id=candidate.id) }}" class="btn">Back to Applicant Details</a>
+{% endblock %}

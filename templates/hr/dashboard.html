@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}HR Dashboard{% endblock %}
+{% block content %}
+    <h2>HR Dashboard - All Applicants</h2>
+    <p>This dashboard shows all candidates who have completed the skill assessment. Click "View Details" to review their answers and scores.</p>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Claimed Skills</th>
+                    <th>Average Score</th>
+                    <th>Flagged Responses</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for candidate in candidates %}
+                <tr>
+                    <td>{{ candidate.name }}</td>
+                    <td>{{ candidate.email }}</td>
+                    <td>{{ candidate.skills|join(', ') if candidate.skills else 'N/A' }}</td>
+                    <td>
+                        {% if candidate.validated_skills %}
+                            {# Calculate and display the average score #}
+                            <strong>{{ "%.2f"|format(candidate.validated_skills.values()|sum / candidate.validated_skills|length) }}%</strong>
+                        {% else %}
+                            <span class="text-muted">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {# This requires a bit more logic, so we'll pass it from the backend #}
+                        <span class="{{ 'flagged' if candidate.flagged_count > 0 }}">{{ candidate.flagged_count }}</span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('hr_applicant_detail', candidate_id=candidate.id) }}" class="btn">View Details</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center;">No candidates have completed the assessment yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

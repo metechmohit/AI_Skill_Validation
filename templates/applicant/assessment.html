@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Skill Assessment{% endblock %}
+{% block content %}
+    <h2>Skill Assessment for {{ candidate.name }}</h2>
+    <p>Based on your resume, we've generated the following questions. Please answer them to the best of your ability.</p>
+    <form method="post" action="{{ url_for('applicant_assessment') }}">
+        {% for assessment in assessments %}
+        <div class="assessment-question">
+            <h3>Skill: {{ assessment.skill }}</h3>
+            <p><strong>Question:</strong> {{ assessment.question }}</p>
+            <div class="form-group">
+                <label for="answer_{{ assessment.id }}">Your Answer</label>
+                {% if assessment.question_type == 'coding' %}
+                    <textarea id="answer_{{ assessment.id }}" name="answer_{{ assessment.id }}" rows="10" placeholder="Write your code or detailed technical answer here..." required></textarea>
+                {% else %}
+                    <textarea id="answer_{{ assessment.id }}" name="answer_{{ assessment.id }}" rows="6" placeholder="Describe the scenario or case study solution here..." required></textarea>
+                {% endif %}
+            </div>
+            {# Hidden input to pass the assessment ID along with the answer #}
+            <input type="hidden" name="assessment_id_{{ loop.index0 }}" value="{{ assessment.id }}">
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn">Submit All Answers</button>
+    </form>
+{% endblock %}

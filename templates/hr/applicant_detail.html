@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Applicant Details - {{ candidate.name }}{% endblock %}
+{% block content %}
+    <h2>Applicant Details: {{ candidate.name }}</h2>
+    <p><strong>Email:</strong> {{ candidate.email }}</p>
+    <p><strong>Resume:</strong> <a href="{{ url_for('static', filename=candidate.resume_path) }}" target="_blank">Download Resume</a></p>
+    <hr>
+    <h3>Assessment Responses</h3>
+    <p>Review the candidate's answers and scores below. Use the "Flag" button to mark any response that requires a second look.</p>
+    
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Skill</th>
+                    <th>Question</th>
+                    <th>Candidate's Answer</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in responses_data %}
+                <tr>
+                    <td><strong>{{ item.assessment.skill }}</strong></td>
+                    <td>{{ item.assessment.question }}</td>
+                    <td><pre>{{ item.response.answer }}</pre></td>
+                    <td><strong>{{ "%.2f"|format(item.response.score) }}%</strong></td>
+                    <td id="status-cell-{{ item.response.id }}" class="{{ 'flagged' if item.response.flagged }}">
+                        {{ 'Flagged for Review' if item.response.flagged else 'OK' }}
+                    </td>
+                    <td>
+                        <button class="btn flag-toggle {{ 'flagged-btn' if item.response.flagged }}" 
+                                data-response-id="{{ item.response.id }}" 
+                                data-flagged="{{ item.response.flagged|lower }}">
+                            {{ 'Unflag' if item.response.flagged else 'Flag' }}
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center;">This candidate has not submitted any responses yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <br>
+    <a href="{{ url_for('hr_dashboard') }}" class="btn">Back to Dashboard</a>
+{% endblock %}
