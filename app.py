@@ -2,27 +2,7 @@
 
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
-# Import tempfile to work with Vercel's temporary directory
-import tempfile
-
-# --- Vercel Deployment Configuration ---
-# Check if running on Vercel, and if so, use the /tmp directory which is writable
-IS_VERCEL = os.environ.get('VERCEL') == '1'
-if IS_VERCEL:
-    # The only writable directory on Vercel is /tmp
-    TMP_DIR = '/tmp'
-    UPLOAD_FOLDER = os.path.join(TMP_DIR, 'static/uploads')
-    DATA_DIR = os.path.join(TMP_DIR, 'data')
-    # Update config paths
-    from config import CANDIDATES_FILE, ASSESSMENTS_FILE, RESPONSES_FILE
-    CANDIDATES_FILE = os.path.join(DATA_DIR, os.path.basename(CANDIDATES_FILE))
-    ASSESSMENTS_FILE = os.path.join(DATA_DIR, os.path.basename(ASSESSMENTS_FILE))
-    RESPONSES_FILE = os.path.join(DATA_DIR, os.path.basename(RESPONSES_FILE))
-else:
-    # Local development paths
-    from config import UPLOAD_FOLDER, CANDIDATES_FILE, ASSESSMENTS_FILE, RESPONSES_FILE
-
-from config import SECRET_KEY
+from config import UPLOAD_FOLDER, SECRET_KEY
 from utils.file_handler import save_file
 from utils.helpers import (
     get_all_candidates, get_candidate_by_id, save_candidate, update_candidate,
@@ -40,16 +20,19 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['SECRET_KEY'] = SECRET_KEY
 
-# --- Helper to ensure directories exist on Vercel ---
+# --- Helper to ensure directories exist ---
+# This is good practice for Render's persistent disks
 def ensure_dirs():
-    if IS_VERCEL:
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    # Assuming data files are in a 'data' directory relative to the app
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    os.makedirs(data_dir, exist_ok=True)
+
 
 # --- Applicant Routes ---
 @app.route('/', methods=['GET', 'POST'])
 def applicant_upload():
-    ensure_dirs()
+    ensure_dirs() # Make sure directories exist on service start
     if request.method == 'POST':
         if 'resume' not in request.files or not request.form.get('name') or not request.form.get('email'):
             flash('Please fill out all fields and select a resume file.', 'warning')
@@ -61,13 +44,10 @@ def applicant_upload():
             return redirect(request.url)
 
         resume_path = save_file(file, app.config['UPLOAD_FOLDER'])
-        # Vercel needs a relative path from the app's perspective
-        relative_resume_path = os.path.relpath(resume_path, os.getcwd()) 
-
         candidate = Candidate(
             name=request.form['name'],
             email=request.form['email'],
-            resume_path=relative_resume_path
+            resume_path=os.path.relpath(resume_path, 'static')
         )
         save_candidate(candidate)
         flash(f'Successfully uploaded resume for {candidate.name}. Now processing...', 'success')
@@ -75,7 +55,7 @@ def applicant_upload():
         try:
             skills = extract_skills_from_resume(resume_path)
             if not skills:
-                flash('Processing failed: We could not identify any skills in your resume.', 'danger')
+                flash('Processing failed: We could not identify any skills in your resume. Please check the file and try again.', 'danger')
                 return redirect(request.url)
             
             candidate.skills = skills
@@ -83,32 +63,30 @@ def applicant_upload():
 
             assessments = generate_assessments_for_skills(skills)
             if not assessments:
-                flash('Processing failed: An error occurred while generating assessment questions.', 'danger')
+                flash('Processing failed: An error occurred while generating assessment questions. Please try again later.', 'danger')
                 return redirect(request.url)
 
             save_assessments(assessments)
-
             session['candidate_id'] = candidate.id
             session['assessment_ids'] = [a.id for a in assessments]
             
             return redirect(url_for('applicant_assessment'))
+
         except Exception as e:
             print(f"A critical error occurred during processing for candidate {candidate.id}: {e}")
-            flash('A critical server error occurred during processing.', 'danger')
+            flash('A critical server error occurred during processing. The technical team has been notified.', 'danger')
             return redirect(request.url)
             
     return render_template('applicant/upload.html')
 
-# All other routes remain the same...
 
 @app.route('/assessment', methods=['GET', 'POST'])
 def applicant_assessment():
-    ensure_dirs()
     candidate_id = session.get('candidate_id')
     assessment_ids = session.get('assessment_ids')
 
     if not candidate_id or not assessment_ids:
-        flash('Your session has expired or is invalid. Please start over.', 'warning')
+        flash('Your session has expired or is invalid. Please start over by uploading your resume.', 'warning')
         return redirect(url_for('applicant_upload'))
 
     candidate = get_candidate_by_id(candidate_id)
@@ -142,6 +120,7 @@ def applicant_thank_you():
     candidate_name = session.pop('candidate_name', 'Applicant')
     return render_template('applicant/thank_you.html', candidate_name=candidate_name)
 
+# --- HR Routes ---
 @app.route('/hr')
 def hr_dashboard():
     ensure_dirs()
@@ -171,6 +150,7 @@ def flag_response(response_id):
         return jsonify({'success': True, 'flagged': response.flagged})
     return jsonify({'success': False, 'error': 'Response not found or invalid data'}), 404
 
-# Note: The main execution block is not needed for Vercel
-# if __name__ == '__main__':
-#     app.run(debug=True)
+# This block is not needed for Render deployment but is fine to keep for local testing
+if __name__ == '__main__':
+    ensure_dirs()
+    app.run(debug=False)
